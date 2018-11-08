@@ -1,5 +1,5 @@
 const expect = require('chai').expect;
-const hdWallet = require('../hdWallet/index')
+const hdWallet = require('../src/index')
 
 
 
@@ -67,25 +67,11 @@ describe('hd wallet', () => {
         // Once the seeker or the provider have access to the item identity,
         // they can use it to encrypt messages using the chat key.
 
-        it('Chat participants should use the item\'s identity to encrypt messages', () => {
-            const messageUtf8 = 'secret message' // must be utf-8
-            const encryptedEnvelope = hdWallet.encrypt(messageUtf8, itemIdentity.chatKey)
-            const _messageUtf8 = hdWallet.decrypt(encryptedEnvelope, itemIdentity.chatKey)
-            expect(_messageUtf8).to.equal(messageUtf8)
-        })
 
         // Once the seeker of the provider have encrypted an envelop, 
         // they should use the item identity to sign envelopes 
         // so the mail server can verify that they have access to a valid item
         // and store their messages.
 
-        it('Chat participants should use the item\'s identity to sign encrypted envelopes', () => {
-            const messageUtf8 = 'encrypted_envelope' // must be utf-8
-
-            const signature = hdWallet.sign(messageUtf8, itemIdentity.secretKey)
-            const isValid = hdWallet.verify(messageUtf8, signature, itemIdentity.publicKey)
-            expect(isValid).to.be.true
-        })
-    
     })
 });

@@ -1,7 +1,7 @@
 const expect = require('chai').expect;
-const concatUintArrays = require('../../hdWallet/util/concatUintArrays')
+const concatUintArrays = require('./concatUintArrays')
 
-describe('concatUintArrays', () => {
+describe('Util: concatUintArrays', () => {
     it('should concatenate two Uint Arrays', () => {
         const a1 = new Uint8Array([1, 2])
         const a2 = new Uint8Array([3, 4])
