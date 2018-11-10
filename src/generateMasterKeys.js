@@ -1,4 +1,4 @@
-const bip39 = require('bip39')
+const bip39 = require('./bip39')
 const nacl = require('tweetnacl')
 nacl.util = require('tweetnacl-util')
 

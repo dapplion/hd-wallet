@@ -20,6 +20,21 @@ const close = () => {
  */
 const db = {}
 server.on('connection', (socket) => {
+    socket.on('newChatMessage', (data, cb) => {
+        key = `${data.itemId}-chatKey`
+        if (!db[key]) db[key] = {messages: [], accessKeys: []}
+        db[key].messages.push(data.message)
+        server.in(data.itemId).emit('chatChanged', db[key])
+        cb('ok')
+    })
+    socket.on('subscribeToChat', (data, cb) => {
+        key = `${data.itemId}-chatKey`
+        if (!db[key]) db[key] = {messages: [], accessKeys: []}
+        if (data.accessKeys) db[key].accessKeys.push(data.accessKeys)
+        socket.join(data.itemId)
+        socket.emit('chatChanged', db[key])
+        cb(db[key].accessKeys)
+    })
     socket.on('accessKeyPost', (itemId, data, cb) => {
         key = `${itemId}-chatKey`
         if (!db[key]) db[key] = []

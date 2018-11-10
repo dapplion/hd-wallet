@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha \"./{,!(node_modules)/**}/*.test.js\" "
+    "test": "./node_modules/mocha/bin/mocha \"./{,!(node_modules)/**}/*.test.js\" ",
+    "build": "node_modules/.bin/webpack"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +14,10 @@
     "chai": "^4.2.0",
     "mocha": "^5.2.0",
     "socket.io": "^2.1.1",
-    "socket.io-client": "^2.1.1"
+    "socket.io-client": "^2.1.1",
+    "webpack": "^4.25.1",
+    "webpack-bundle-analyzer": "^3.0.3",
+    "webpack-cli": "^3.1.2"
   },
   "dependencies": {
     "bip39": "^2.5.0",
