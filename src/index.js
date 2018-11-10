@@ -46,5 +46,6 @@ module.exports = {
     generateMasterKeys,
     item,
     access,
-    util
+    util,
+    version: '0.1.0-commit#dcceb2'
 }

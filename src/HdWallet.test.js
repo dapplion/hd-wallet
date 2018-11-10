@@ -1,12 +1,13 @@
 const expect = require('chai').expect;
 const HdWallet = require('./HdWallet')
 
-const port = 8081;
+const port = 8089;
 const server = require('socket.io')(port);
 const ioClient = require('socket.io-client')
 const clients = []
-const connect = () => {
+const connect = (id) => {
     const client = ioClient.connect(`http://localhost:${port}`);
+    console.log(`Connected ${id}`)
     clients.push(client)
     return client
 }
@@ -20,12 +21,14 @@ const close = () => {
  */
 const db = {}
 server.on('connection', (socket) => {
+    console.log('Socket connected', socket.id)
+
     socket.on('newChatMessage', (data, cb) => {
         key = `${data.itemId}-chatKey`
         if (!db[key]) db[key] = {messages: [], accessKeys: []}
         db[key].messages.push(data.message)
         server.in(data.itemId).emit('chatChanged', db[key])
-        cb('ok')
+        cb({response: 200, message: 'successfully posted message'})
     })
     socket.on('subscribeToChat', (data, cb) => {
         key = `${data.itemId}-chatKey`
@@ -33,52 +36,73 @@ server.on('connection', (socket) => {
         if (data.accessKeys) db[key].accessKeys.push(data.accessKeys)
         socket.join(data.itemId)
         socket.emit('chatChanged', db[key])
-        cb(db[key].accessKeys)
+        cb({response: 200, data: db[key].accessKeys})
     })
     socket.on('accessKeyPost', (itemId, data, cb) => {
         key = `${itemId}-chatKey`
         if (!db[key]) db[key] = []
         db[key].push(data)
-        cb('ok')
+        cb({response: 200, message: 'successfully posted key'})
     })
     socket.on('accessKeyGet', (itemId, cb) => {
         key = `${itemId}-chatKey`
-        cb(db[key])
+        cb({response: 200, data: db[key]})
     })
     socket.on('chatMessagePost', (itemId, data, cb) => {
         key = `${itemId}-chat`
         if (!db[key]) db[key] = []
         db[key].push(data)
         server.to(itemId).emit('chatMessage', data)
-        cb('ok')
+        cb({response: 200, message: 'successfully posted message'})
     })
     socket.on('chatMessageGet', (itemId, cb) => {
         key = `${itemId}-chat`
-        cb(db[key])
+        cb({response: 200, data: db[key]})
     })
     socket.on('chatMessageSub', (itemId) => {
         socket.join(itemId)
     })
 });
 
-function transport() {
-    return connect()
+function transport(id) {
+    return connect(id)
 }
 
 describe('HdWallet class: ', () => {
+    let socketClientAlice
+    let socketClientBob
     let hdWalletAlice
     let hdWalletBob
     let itemHash
+    it('should create socket clients for the test', () => {
+        socketClientAlice = transport('Alice')
+        socketClientBob = transport('Bob')
+    })
     it('should give access to a chat to a provider', async () => {
-        hdWalletAlice = new HdWallet({transport: transport(), name: 'Alice'})
-        hdWalletBob = new HdWallet({transport: transport(), name: 'Bob'})
+        hdWalletAlice = new HdWallet({
+            transport: socketClientAlice, 
+            name: 'Alice'
+        })
+        hdWalletBob = new HdWallet({
+            transport: socketClientBob, 
+            name: 'Bob'
+        })
+
         itemHash = hdWalletAlice.createItem()
+        expect(itemHash).to.exist
+        expect(itemHash).to.be.a('Uint8Array')
+        expect(itemHash).to.have.length(32)
+
         const accessKeyBob = hdWalletBob.requestAccess(itemHash)
-        await hdWalletAlice.giveAccess(itemHash, accessKeyBob)
-        await hdWalletBob.getAccess(itemHash)
-        const keyAlice = hdWalletAlice.items[Object.keys(hdWalletAlice.items)[0]].chatKey.toString('hex')
-        const keyBob = hdWalletBob.items[Object.keys(hdWalletBob.items)[0]].chatKey.toString('hex')
-        expect(keyAlice).to.equal(keyBob)
+        expect(accessKeyBob).to.exist
+        expect(accessKeyBob).to.be.a('Uint8Array')
+        expect(accessKeyBob).to.have.length(32)
+
+        const res = await hdWalletAlice.giveAccess(itemHash, accessKeyBob)
+        console.log(res)
+
+        const res2 = await hdWalletBob.getAccess(itemHash)
+        console.log(res2)
     })
 
     const aliceMessages = [

@@ -2,86 +2,115 @@ const {generateMasterKeys} = require('./generateMasterKeys')
 const item = require('./item')
 const access = require('./access')
 const toHex = require('./util/toHex')
-const {promisify} = require('util')
+const util = require('./util')
 
-class HdWallet {
-    constructor({mnemonic, transport, storage, name} = {}) {
-        // if mnemonic = null, a random keypair will be generated
-        this.masterKeys = generateMasterKeys(mnemonic)
-        this.items = {}
-        this.transport = wrapTransport(transport)
-        this.storage = storage
-        this.name = name
+/**
+ * Using a factory function function to achieve privacy for the keys
+ * Using the crockford pattern: https://crockford.com/javascript/private.html
+ * @param {Object} params
+ */
+function HdWallet({
+    mnemonic, 
+    transport: _transport, 
+    storage: _storage, 
+    name
+} = {}) {
+    // if mnemonic = null, a random keypair will be generated
+    const masterKeys = generateMasterKeys(mnemonic)
+    const items = {}
+    let transport = wrapTransport(_transport)
+    let storage = _storage
+
+    function setTransport(_transport) {
+        transport = wrapTransport(_transport)
+    }
+    function setStorage(_storage) {
+        storage = _storage
     }
 
-    setTransport(transport) {
-        this.transport = wrapTransport(transport)
-    }
-    setStorage(storage) {
-        this.storage = storage
-    }
-
-    createItem() {
-        const itemIdentity = item.keys.generate(this.masterKeys.item)
-        this.items[itemIdentity.hash] = itemIdentity
+    function createItem() {
+        const itemIdentity = item.keys.generate(masterKeys.item)
+        items[itemIdentity.hash] = itemIdentity
         return itemIdentity.hash
     }
 
-    requestAccess(itemHash) {
-        const accessKeypair = access.keys.generate(this.masterKeys.access, itemHash)
+    function requestAccess(itemHash) {
+        const accessKeypair = access.keys.generate(masterKeys.access, itemHash)
         return accessKeypair.publicKey
     }
 
-    async giveAccess(itemHash, recipientPublicKey) {
-        let itemIdentity = this.items[itemHash]
+    async function giveAccess(itemHash, recipientPublicKey) {
+        let itemIdentity = items[itemHash]
         if (!itemIdentity) {
-            itemIdentity = item.keys.recoverFromHash(this.masterKeys.item, itemHash)
+            itemIdentity = item.keys.recoverFromHash(masterKeys.item, itemHash)
         }
-        const accessKeypair = access.keys.generate(this.masterKeys.access, itemHash)
+        const accessKeypair = access.keys.generate(masterKeys.access, itemHash)
         const envelope = access.give(itemIdentity.seed, recipientPublicKey, accessKeypair)
         // Send the envelope to the recipient
-        await this.transport.accessKey.post(toHex(itemHash), envelope)
+        return await transport.accessKey.post(toHex(itemHash), envelope)
     }
 
-    async getAccess(itemHash) {
-        const accessKeypair = access.keys.generate(this.masterKeys.access, itemHash)
-        const envelopes = await this.transport.accessKey.get(toHex(itemHash))
+    async function getAccess(itemHash) {
+        const accessKeypair = access.keys.generate(masterKeys.access, itemHash)
+        const envelopes = await transport.accessKey.get(toHex(itemHash))
         for (const envelope of envelopes) {
             const itemSeed = access.get(envelope, accessKeypair)
             if (itemSeed) {
-                this.items[itemHash] = item.keys.generateFromSeed(itemSeed)
+                items[itemHash] = item.keys.generateFromSeed(itemSeed)
                 return
             }
         }
         throw Error('No valid key found')
     }
 
-    async sendMessage(itemHash, text) {
-        if (!this.items[itemHash]) throw Error('Chat keys not available')
-        const payload = item.chat.sendMessage(text, this.name, this.items[itemHash])
-        await this.transport.chatMessage.post(toHex(itemHash), payload)
+    async function sendMessage(itemHash, text) {
+        if (!items[itemHash]) throw Error('Chat keys not available')
+        const payload = item.chat.sendMessage(text, name, items[itemHash])
+        await transport.chatMessage.post(toHex(itemHash), payload)
     }
 
-    async getMessages(itemHash) {
-        if (!this.items[itemHash]) throw Error('Chat keys not available')
-        const payloads = await this.transport.chatMessage.get(toHex(itemHash))
+    async function getMessages(itemHash) {
+        if (!items[itemHash]) throw Error('Chat keys not available')
+        const payloads = await transport.chatMessage.get(toHex(itemHash))
         return payloads
-            .map(payload => item.chat.openMessage(payload, this.items[itemHash]))
+            .map(payload => item.chat.openMessage(payload, items[itemHash]))
             .filter(message => message)     
     }
 
-    joinChat(itemHash, callback) {
-        if (!this.items[itemHash]) throw Error('Chat keys not available')
-        this.transport.chatMessage.sub(toHex(itemHash), (payload) => {
-            const message = item.chat.openMessage(payload, this.items[itemHash])
+    function joinChat(itemHash, callback) {
+        if (!items[itemHash]) throw Error('Chat keys not available: '+JSON.stringify(items))
+        transport.chatMessage.sub(toHex(itemHash), (payload) => {
+            const message = item.chat.openMessage(payload, items[itemHash])
             callback(message)
         })
+    }
+    return {
+        // static properties
+        version: '0.1.0-commit#dcceb2',
+        util,
+        name,
+        transport,
+        storage,
+        // methods
+        setTransport,
+        setStorage,
+        createItem,
+        requestAccess,
+        giveAccess,
+        getAccess,
+        sendMessage,
+        getMessages,
+        joinChat,
     }
 }
 
 function wrapTransport(transport) {
     const handler = (resolve, reject) => (res) => {
-        resolve(res)
+        if (res.response === 200) {
+            resolve(res.data || res.message)
+        } else {
+            reject(res.message)
+        }
     }
     return {
         accessKey: {
