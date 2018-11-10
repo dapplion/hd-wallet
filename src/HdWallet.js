@@ -80,9 +80,9 @@ function HdWallet({
         }
     }
 
-    async function sendMessage(itemHash, text) {
+    async function sendMessage(itemHash, text, user) {
         if (!items[itemHash]) throw Error('Chat keys not available')
-        const payload = item.chat.sendMessage(text, name, items[itemHash])
+        const payload = item.chat.sendMessage(text, user || name, items[itemHash])
         const res = await transport.newChatMessage(toHex(itemHash), payload)
         return res
     }

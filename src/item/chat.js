@@ -10,7 +10,7 @@ function sendMessage(text, user, itemIdentity) {
     const messageObject = {
         text,
         user,
-        timestamp: Date.now()
+        timestamp: Math.floor(Date.now()/1000)
     }
     const {chatKey, secretKey, publicKey} = itemIdentity
     const envelope = symetric.encrypt(JSON.stringify(messageObject), chatKey)
