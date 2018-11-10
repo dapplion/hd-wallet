@@ -23,12 +23,14 @@ function generateMnemonic() {
 * Generate first level masterKeys
 * @argument {String} mnemonic
 */
-function generateMasterKeys(mnemonic) {
-    if (!mnemonic) mnemonic = generateMnemonic()
+function generateMasterKeys(privateKey) {
+    if (typeof privateKey === 'string') {
+        if (privateKey.startsWith('0x')) privateKey = privateKey.slice(2)
+        privateKeyBuffer = Buffer.from(privateKey, 'hex')
+    }
     // 64Bytes buffer seed derived from the mnemonic
-    const seedBuffer = bip39.mnemonicToSeed(mnemonic)
+    const seedBuffer = nacl.hash(privateKeyBuffer)
     const bindings = [
-        { nonce: 0, key: 'token' },
         { nonce: 1, key: 'item' },
         { nonce: 2, key: 'access' },
     ]

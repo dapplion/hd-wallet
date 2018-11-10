@@ -10,8 +10,10 @@ describe('Crypt: asymetric encryption module', () => {
     let providerAccessKeypair
 
     before(() => {
-        const seekerMasterKeys = generateMasterKeys()
-        const providerMasterKeys = generateMasterKeys()
+        const privateKeySeeker = "0x348ce564d427a3311b6536bbcff9390d69395b06ed6c486954e971d960fe8709"
+        const privateKeyProvider = "0xd7325de5c2c1cf0009fac77d3d04a9c004b038883446b065871bc3e831dcd098"
+        const seekerMasterKeys = generateMasterKeys(privateKeySeeker)
+        const providerMasterKeys = generateMasterKeys(privateKeyProvider)
         itemHash = item.keys.generate(seekerMasterKeys.item).hash
         seekerAccessKeypair = access.keys.generate(seekerMasterKeys.access, itemHash)
         providerAccessKeypair = access.keys.generate(providerMasterKeys.access, itemHash)

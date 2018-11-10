@@ -6,7 +6,8 @@ const keys = require('../item/keys')
 describe('Crypt: signatures module', () => {
     let itemIdentity;
     before(() => {
-        const masterKeys = generateMasterKeys()
+        const privateKey = "0x348ce564d427a3311b6536bbcff9390d69395b06ed6c486954e971d960fe8709"
+        const masterKeys = generateMasterKeys(privateKey)
         itemIdentity = keys.generate(masterKeys.item)
     })
     

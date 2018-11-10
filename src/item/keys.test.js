@@ -3,7 +3,8 @@ const keys = require('./keys')
 const {generateMasterKeys} = require('../')
 
 describe('Item Keys module: Item identity use flow', () => {
-    const seekerMasterKeys = generateMasterKeys()
+    const privateKey = "0x348ce564d427a3311b6536bbcff9390d69395b06ed6c486954e971d960fe8709"
+    const seekerMasterKeys = generateMasterKeys(privateKey)
     let itemIdentity
 
     it('The Seeker should generate a new item identity', () => {

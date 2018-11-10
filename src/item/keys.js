@@ -67,7 +67,7 @@ function recoverFromHash(masterKeyItems, itemHash) {
     const itemNonce = itemHash.slice(32 - itemNonceLength)
     const itemIdentity = generateFromNonce(masterKeyItems, itemNonce)
     if (itemHash.toString('hex') !== itemIdentity.hash.toString('hex')) {
-        throw Error('You cannot recover the identity of an item you didn\'t created')
+        return null
     }
     return itemIdentity
 }
