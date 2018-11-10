@@ -4,6 +4,8 @@ const {
 } = require('./generateMasterKeys')
 const item = require('./item')
 const access = require('./access')
+// Utils
+const util = require('./util')
 
 /**
  * Chat implementation
@@ -44,4 +46,5 @@ module.exports = {
     generateMasterKeys,
     item,
     access,
+    util
 }
