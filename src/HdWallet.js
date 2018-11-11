@@ -25,10 +25,16 @@ function HdWallet({
     // Internal methods
     function getMasterKeys(privateKey) {
         if (!masterKeys) {
-            if (!privateKey) throw Error('masterKeys are not defined, and privateKey is not defined')
+            if (!privateKey) throw Error('masterKeys and privateKey are not defined')
             masterKeys = generateMasterKeys(privateKey)
         }
         return masterKeys
+    }
+    function getItemIdentity(itemHashHex) {
+        return items[itemHashHex]
+    }
+    function setItemIdentity(itemHashHex, itemIdentity) {
+        items[itemHashHex] = itemIdentity
     }
 
     // Setters
@@ -46,32 +52,42 @@ function HdWallet({
     function createItem(privateKey) {
         const masterKeys = getMasterKeys(privateKey)
         const itemIdentity = item.keys.generate(masterKeys.item)
-        items[itemIdentity.hash] = itemIdentity
-        return itemIdentity.hash
+        const itemHashHex = util.toHex(itemIdentity.hash)
+        setItemIdentity(itemHashHex, itemIdentity)
+        return itemHashHex 
     }
 
-    function requestAccess(privateKey, itemHash) {
+    function requestAccess(privateKey, itemHashHex) {
+        if (typeof itemHashHex !== 'string') throw Error('itemHashHex must be a string')
         const masterKeys = getMasterKeys(privateKey)
+        const itemHash = util.toUint8Array(itemHashHex)
         const accessKeypair = access.keys.generate(masterKeys.access, itemHash)
-        return accessKeypair.publicKey
+        return util.toHex(accessKeypair.publicKey)
     }
 
-    async function giveAccess(privateKey, itemHash, recipientPublicKey) {
+    async function giveAccess(privateKey, itemHashHex, recipientPublicKeyHex) {
+        if (typeof itemHashHex !== 'string') throw Error('itemHashHex must be a string')
+        if (typeof recipientPublicKeyHex !== 'string') throw Error('recipientPublicKeyHex must be a string')
+
         const masterKeys = getMasterKeys(privateKey)
-        let itemIdentity = items[itemHash]
+        const itemHash = util.toUint8Array(itemHashHex)
+        const recipientPublicKey = util.toUint8Array(recipientPublicKeyHex)
+        let itemIdentity = getItemIdentity(itemHashHex)
         if (!itemIdentity) {
             itemIdentity = item.keys.recoverFromHash(masterKeys.item, itemHash)
         }
         const accessKeypair = access.keys.generate(masterKeys.access, itemHash)
         const envelope = access.give(itemIdentity.seed, recipientPublicKey, accessKeypair)
         // Send the envelope to the server
-        return await transport.subscribeToChat(toHex(itemHash), envelope, null)
+        return await transport.subscribeToChat(itemHashHex, envelope, null)
     }
 
     // Join chat, 
 
-    function getItemIdentityFromAccessKeys(privateKey, itemHash, accessKeys) {
+    function getItemIdentityFromAccessKeys(privateKey, itemHashHex, accessKeys) {
+        if (typeof itemHashHex !== 'string') throw Error('itemHashHex must be a string')
         const masterKeys = getMasterKeys(privateKey)
+        const itemHash = util.toUint8Array(itemHashHex)
         const accessKeypair = access.keys.generate(masterKeys.access, itemHash)
         for (const accessKey of accessKeys) {
             const itemSeed = access.get(accessKey, accessKeypair)
@@ -80,38 +96,45 @@ function HdWallet({
         }
     }
 
-    async function sendMessage(itemHash, text, user) {
-        if (!items[itemHash]) throw Error('Chat keys not available')
-        const payload = item.chat.sendMessage(text, user || name, items[itemHash])
+    async function sendMessage(itemHashHex, text, user) {
+        if (typeof itemHashHex !== 'string') throw Error('itemHashHex must be a string')
+        const itemIdentity = getItemIdentity(itemHashHex)
+        if (!itemIdentity) throw Error('Chat keys not available')
+        const itemHash = util.toUint8Array(itemHashHex)
+        const payload = item.chat.sendMessage(text, user || name, itemIdentity)
         const res = await transport.newChatMessage(toHex(itemHash), payload)
         return res
     }
 
-    async function joinChat(privateKey, itemHash, callback) {
+    async function joinChat(privateKey, itemHashHex, callback) {
+        if (typeof itemHashHex !== 'string') throw Error('itemHashHex must be a string')
+        const itemHash = util.toUint8Array(itemHashHex)
         // Get keys to decrypt the messages
-        if (!items[itemHash]) {
+        if (!getItemIdentity(itemHashHex)) {
             // Will return null if the user is not the seeker
             const masterKeys = getMasterKeys(privateKey)
             const itemIdentity = item.keys.recoverFromHash(masterKeys.item, itemHash)
-            if (itemIdentity) items[itemHash] = itemIdentity
+            if (itemIdentity) items[itemHashHex] = itemIdentity
+            setItemIdentity(itemHashHex, itemIdentity)
         }
         
         const chatCallback = (chatObject) => {
             const {accessKeys, messages} = chatObject
             // chatObject = { accessKeys: [], messages: [] }
-            if (!items[itemHash] && accessKeys) {
-                const itemIdentity = getItemIdentityFromAccessKeys(privateKey, itemHash, accessKeys)
-                if (itemIdentity) items[itemHash] = itemIdentity
+            if (!items[itemHashHex] && accessKeys) {
+                const itemIdentity = getItemIdentityFromAccessKeys(privateKey, itemHashHex, accessKeys)
+                if (itemIdentity) setItemIdentity(itemHashHex, itemIdentity)
                 else throw Error('Chat keys not available')
             }
             if (messages) {
+                const itemIdentity = getItemIdentity(itemHashHex)
                 callback(messages
-                    .map(payload => item.chat.openMessage(payload, items[itemHash]))
+                    .map(payload => item.chat.openMessage(payload, itemIdentity))
                     .filter(message => message)
                 )
             }
         }
-        return await transport.subscribeToChat(toHex(itemHash), null, chatCallback)
+        return await transport.subscribeToChat(itemHashHex, null, chatCallback)
     }
 
     return {

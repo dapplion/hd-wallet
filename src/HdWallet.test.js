@@ -84,15 +84,16 @@ describe('HdWallet class: ', () => {
             name: 'Bob'
         })
 
+        // Declared in the parent function for scope
         itemHash = hdWalletAlice.createItem(privateKeyAlice)
         expect(itemHash).to.exist
-        expect(itemHash).to.be.a('Uint8Array')
-        expect(itemHash).to.have.length(32)
+        expect(itemHash).to.be.a('string')
+        expect(itemHash).to.have.length(64+2)
 
         const accessKeyBob = hdWalletBob.requestAccess(privateKeyBob, itemHash)
         expect(accessKeyBob).to.exist
-        expect(accessKeyBob).to.be.a('Uint8Array')
-        expect(accessKeyBob).to.have.length(32)
+        expect(accessKeyBob).to.be.a('string')
+        expect(accessKeyBob).to.have.length(64+2)        
 
         const res = await hdWalletAlice.giveAccess(null, itemHash, accessKeyBob)
         console.log(res)

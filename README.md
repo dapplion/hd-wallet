@@ -26,6 +26,8 @@ First, the seeker will create an item and generate it's itemHash. Now the hash c
 
 ```javascript
 itemHash = hdWallet.createItem(privateKey);
+// itemHash = 0x394a93cdebef560305e56b9529946dcddaa0abcb6bac480555a5bc9a66d9547d
+// 32 bytes hex string prepended by 0x
 ```
 
 ### Provider replies
@@ -34,6 +36,8 @@ The provider must attach a publicKey with the reply. This publicKey is derived f
 
 ```javascript
 const accessKey = hdWallet.requestAccess(privateKey, itemHash);
+// accessKey = 0x9eef05739c646353e552e4578acb4db6180144dfcb89b60bbed847bafb334544
+// 32 bytes hex string prepended by 0x
 ```
 
 ### Seeker gives access to the provider
